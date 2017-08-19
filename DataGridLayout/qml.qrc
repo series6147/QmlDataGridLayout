@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>qtquickcontrols2.conf</file>
+        <file>DataGridHeaderItem.qml</file>
+        <file>DataGridRow.qml</file>
+        <file>DataGridRowItem.qml</file>
+        <file>ScrollBarPage.qml</file>
+        <file>DataGridRowLayout.qml</file>
+        <file>DataGridRowItemDelegateDefault.qml</file>
+        <file>DataGridHeaderItemDelegateDefault.qml</file>
+        <file>DataGridHeaderLayout.qml</file>
+        <file>DataGridLayout.qml</file>
+        <file>Images/selectArrows.svg</file>
+    </qresource>
+</RCC>
