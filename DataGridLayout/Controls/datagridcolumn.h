@@ -15,13 +15,13 @@ class DataGridColumn : public QObject
     Q_PROPERTY(DataGrid* dataGrid READ dataGrid WRITE setDataGrid NOTIFY dataGridChanged)
     Q_PROPERTY(int column READ column WRITE setColumn NOTIFY columnChanged)
     Q_PROPERTY(int columnSpan READ columnSpan WRITE setColumnSpan NOTIFY columnSpanChanged)
-    Q_PROPERTY(int maxWidth READ maxWidth WRITE setMaxWidth NOTIFY maxWidthChanged)
-    Q_PROPERTY(int minWidth READ minWidth WRITE setMinWidth NOTIFY minWidthChanged)
     Q_PROPERTY(int roleIndex READ roleIndex)
     Q_PROPERTY(int row READ row WRITE setRow NOTIFY rowChanged)
     Q_PROPERTY(int rowSpan READ rowSpan WRITE setRowSpan NOTIFY rowSpanChanged)
     Q_PROPERTY(QQmlComponent* headerDelegate READ headerDelegate WRITE setHeaderDelegate NOTIFY headerDelegateChanged)
     Q_PROPERTY(QQmlComponent* itemDelegate READ itemDelegate WRITE setItemDelegate NOTIFY itemDelegateChanged)
+    Q_PROPERTY(qreal maxWidth READ maxWidth WRITE setMaxWidth NOTIFY maxWidthChanged)
+    Q_PROPERTY(qreal minWidth READ minWidth WRITE setMinWidth NOTIFY minWidthChanged)
     Q_PROPERTY(Qt::Alignment itemAlignment READ itemAlignment WRITE setItemAlignment NOTIFY itemAlignmentChanged)
     Q_PROPERTY(QVariant role READ role WRITE setRole NOTIFY roleChanged)
     Q_PROPERTY(QVariant width READ width WRITE setWidth NOTIFY widthChanged)
@@ -43,13 +43,13 @@ public:
     DataGrid* dataGrid() const;
     int column() const;
     int columnSpan() const;
-    int maxWidth() const;
-    int minWidth() const;
     int roleIndex() const;
     int row() const;
     int rowSpan() const;
     QQmlComponent* headerDelegate() const;
     QQmlComponent* itemDelegate() const;
+    qreal maxWidth() const;
+    qreal minWidth() const;
     Qt::Alignment itemAlignment() const;
     QVariant role() const;
     QVariant width() const;
@@ -61,8 +61,8 @@ signals:
     void dataGridChanged(DataGrid* dataGrid);
     void headerDelegateChanged(QQmlComponent* headerDelegate);
     void headerVisibleChanged(bool headerVisible);
-    void maxWidthChanged(int maxWidth);
-    void minWidthChanged(int minWidth);
+    void maxWidthChanged(qreal maxWidth);
+    void minWidthChanged(qreal minWidth);
     void rowChanged(int row);
     void itemAlignmentChanged(Qt::Alignment itemAlignment);
     void itemDelegateChanged(QQmlComponent* itemDelegate);
@@ -80,8 +80,8 @@ public slots:
     void setDataGrid(DataGrid* dataGrid);
     void setHeaderDelegate(QQmlComponent* headerDelegate);
     void setHeaderVisible(bool headerVisible);
-    void setMaxWidth(int maxWidth);
-    void setMinWidth(int minWidth);
+    void setMaxWidth(qreal maxWidth);
+    void setMinWidth(qreal minWidth);
     void setRow(int row);
     void setItemAlignment(Qt::Alignment itemAlignment);
     void setItemDelegate(QQmlComponent* itemDelegate);
@@ -101,12 +101,12 @@ private:
     DataGrid* m_dataGrid;
     int m_column;
     int m_columnSpan;
-    int m_maxWidth;
-    int m_minWidth;
     int m_row;
     int m_rowSpan;
     QQmlComponent *m_headerDelegate;
     QQmlComponent *m_itemDelegate;
+    qreal m_maxWidth;
+    qreal m_minWidth;
     Qt::Alignment m_itemAlignment;
     QVariant m_role;
     QVariant m_width;

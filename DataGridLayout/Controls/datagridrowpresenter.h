@@ -26,7 +26,6 @@ private:
     void createLayout();
 
 private slots:
-    void itemWidthChanged();
     void layoutChanged();
     void parentFocusChanged();
 

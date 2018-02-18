@@ -3,30 +3,23 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.3
 
 DataGridRowItemPresenter {
-    clip: true
     id: layoutRoot
-    implicitHeight: childrenRect.height + 10
-    implicitWidth: childrenRect.width
-    Layout.leftMargin: itemX
-    Layout.row: itemRow
-    Layout.rowSpan: itemRowSpan
+    implicitHeight: childrenRect.height > 0 ? childrenRect.height + 10 : 0
+    implicitWidth: itemWidth
     objectName: "__DATAGRIDROWITEM__"
-    onItemWidthChanged: {
-        implicitWidth = itemWidth;
-        layout.implicitWidth = itemWidth - 5;
-    }
     visible: itemVisible
+    x: itemX
 
     Item {
-        id: layout
+        anchors.left: parent.left
+        anchors.margins: childrenRect.height > 0 ? 5 : 0
+        anchors.right: parent.right
+        anchors.top: parent.top
+        clip: true
         implicitHeight: childrenRect.height
-        implicitWidth: childrenRect.width
         objectName: "__DATAGRIDROWITEMLAYOUT__"
-        x: 5
-        y: 5
 
         Loader {
-            anchors.bottomMargin: 5
             anchors.centerIn: layoutRoot.column === null
                               ? undefined
                               : layoutRoot.column.itemAlignment === Qt.AlignHCenter
@@ -42,7 +35,6 @@ DataGridRowItemPresenter {
                            : layoutRoot.column.itemAlignment === Qt.AlignRight || layoutRoot.column.itemAlignment === Qt.AlignJustify
                              ? parent.right
                              : undefined
-            anchors.rightMargin: 5
             function sendEvent(eventName, value) {
                 layoutRoot.sendEvent(eventName, value);
             }
@@ -56,6 +48,9 @@ DataGridRowItemPresenter {
             property var item: layoutRoot
             property var model: layoutRoot.model
             property var modelData: layoutRoot.modelData
+            onImplicitWidthChanged: {
+                layoutRoot.contentWidthChanged(implicitWidth + 10);
+            }
             sourceComponent: column === null
                              ? null
                              : column.itemDelegate === null ? defaultDelegate : column.itemDelegate

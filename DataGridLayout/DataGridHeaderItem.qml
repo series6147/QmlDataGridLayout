@@ -5,47 +5,38 @@ import QtQuick.Layouts 1.3
 
 DataGridHeaderItemPresenter {
     id: layoutRoot
-    implicitHeight: childrenRect.height + 10
-    implicitWidth: childrenRect.width + 5
-    Layout.leftMargin: itemX
-    Layout.row: itemRow
-    Layout.rowSpan: itemRowSpan
+    height: visible && childrenRect.height > 0 ? childrenRect.height + 10 : 0
     objectName: "__DATAGRIDHEADERITEM__"
-    onItemWidthChanged: {
-        implicitWidth = itemWidth;
-        rowLayout.implicitWidth = itemWidth - 5;
-    }
     visible: itemVisible
+    width: itemWidth
+    x: itemX
+    z: 100
 
     Item {
+        anchors.left: parent.left
+        anchors.margins: 5
+        anchors.right: parent.right
+        anchors.top: parent.top
         clip: true
-        id: rowLayout
         implicitHeight: childrenRect.height
-        implicitWidth: childrenRect.width
-        x: 5
-        y: 5
 
-        Item {
-            id: layout
-            implicitHeight: childrenRect.height
-            implicitWidth: childrenRect.width
-            objectName: "__DATAGRIDHEADERITEMLAYOUT__"
-
-            Loader {
-                property var column: layoutRoot.column
-                property var item: layoutRoot
-                property var model: layoutRoot.model
-                property var modelData: layoutRoot.modelData
-                sourceComponent: column === null
-                                 ? null
-                                 : column.headerDelegate === null ? defaultDelegate : column.headerDelegate
+        Loader {
+            property var column: layoutRoot.column
+            property var item: layoutRoot
+            property var model: layoutRoot.model
+            property var modelData: layoutRoot.modelData
+            onImplicitWidthChanged: {
+                layoutRoot.contentWidthChanged(implicitWidth + 10 + imageSort.implicitWidth + resize.implicitWidth);
             }
+            sourceComponent: column === null
+                             ? null
+                             : column.headerDelegate === null ? defaultDelegate : column.headerDelegate
         }
 
         Image {
             anchors.right: resize.left
             id: imageSort
-            source: "qrc:/Images/selectArrows.svg"
+            source: "qrc:/Resources/images/selectArrows.svg"
             sourceSize: "14 x 14"
             visible: layoutRoot.dataGrid.sortEnabled && layoutRoot.column.sortEnabled
 
@@ -60,9 +51,9 @@ DataGridHeaderItemPresenter {
         }
 
         ColorOverlay {
-            anchors.fill: imageSort
-            source: imageSort
+            anchors.fill: imageSort.visible ? imageSort : null
             color: layoutRoot.column.sortActive ? "#ff999999" : "#ffdddddd"
+            source: imageSort
         }
 
         Rectangle {
@@ -71,12 +62,12 @@ DataGridHeaderItemPresenter {
             anchors.top: parent.top
             color: layoutRoot.color
             id: resize
-            implicitWidth: 10
+            implicitWidth: visible ? 10 : 0
             visible: column.sizeMode === DataGridColumn.FixedSize && typeof column.width === "number"
 
             Rectangle {
                 anchors.bottom: parent.bottom
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.right: parent.right
                 anchors.top: parent.top
                 color: "#ccc"
                 width: 1

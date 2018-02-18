@@ -4,7 +4,7 @@
 #include "datagridheaderpresenter.h"
 #include "datagriditemlayout.h"
 
-DataGridHeaderPresenter::DataGridHeaderPresenter(QQuickItem *parent) : QQuickItem(parent)
+DataGridHeaderPresenter::DataGridHeaderPresenter(QQuickItem *parent) : QQuickPaintedItem(parent)
 {
     m_dataGrid = NULL;
     m_itemsLayout = NULL;
@@ -49,50 +49,89 @@ void DataGridHeaderPresenter::createLayout()
 
     if (m_dataGrid != NULL)
     {
+        auto columns = m_dataGrid->columns();
+        QQmlComponent itemComponent(qmlEngine(this), "qrc:/DataGridHeaderItem.qml");
+        QSet<QString> objNames;
+
+        qSort(columns.begin(), columns.end()
+              , [](DataGridColumn* a, DataGridColumn* b)
+        {
+            if (a->rowSpan() < b->rowSpan())
+            {
+                return false;
+            }
+            else if (a->rowSpan() > b->rowSpan())
+            {
+                return true;
+            }
+            else if (a->row() < b->row())
+            {
+                return true;
+            }
+            else if (a->row() > b->row())
+            {
+                return false;
+            }
+            else
+            {
+                return a->column() < b->column();
+            }
+        });
+
+        for (auto column : columns)
+        {
+            auto objName = QString("%1x%2").arg(column->row()).arg(column->rowSpan());
+
+            if (!objNames.contains(objName))
+            {
+                auto item = qobject_cast<QQuickItem*>(itemComponent.create());
+
+                item->setObjectName(objName);
+                item->setProperty("itemRow", column->row());
+                item->setProperty("itemRowSpan", column->rowSpan());
+                item->setParent(m_itemsLayout);
+                item->setParentItem(m_itemsLayout);
+
+                objNames.insert(objName);
+            }
+        }
+
         QQmlComponent component(qmlEngine(this), "qrc:/DataGridHeaderItem.qml");
 
-        for (auto column : m_dataGrid->columns())
+        for (auto column : columns)
         {
             auto item = qobject_cast<DataGridHeaderItemPresenter*>(component.create());
-            auto root = item->findChild<QQuickItem*>("__DATAGRIDHEADERITEMLAYOUT__");
+            auto parent = m_itemsLayout->findChild<QQuickItem*>(QString("%1x%2").arg(column->row()).arg(column->rowSpan()));
 
             m_items[column] = item;
 
-            item->setColumn(column);
             item->setDataGrid(m_dataGrid);
+            item->setColumn(column);
             item->setItemRow(column->row());
             item->setItemRowSpan(column->rowSpan());
             item->setItemVisible(column->headerVisible());
-            item->setParent(m_itemsLayout);
-            item->setParentItem(m_itemsLayout);
-
-            connect(root, &QQuickItem::widthChanged, this, &DataGridHeaderPresenter::itemWidthChanged);
+            item->setParent(parent);
+            item->setParentItem(parent);
         }
     }
 
     arrange();
-}
-
-void DataGridHeaderPresenter::itemWidthChanged()
-{
-    auto item = qobject_cast<QQuickItem*>(sender()->parent());
-
-    if (m_dataGrid != NULL)
-    {
-        auto column = m_items.key(item);
-
-        if (column)
-        {
-            auto layout = m_dataGrid->itemLayout();
-
-            layout->setColumnSize(column, item->implicitWidth());
-        }
-    }
 }
 
 void DataGridHeaderPresenter::layoutChanged()
 {
     arrange();
+}
+
+void DataGridHeaderPresenter::paint(QPainter *painter)
+{
+    if (m_dataGrid != NULL)
+    {
+        auto interior = QRect(0, 0, width(), height());
+        auto color = QColor(m_dataGrid->headerBackground());
+
+        painter->fillRect(interior, color);
+    }
 }
 
 void DataGridHeaderPresenter::setDataGrid(DataGrid *dataGrid)

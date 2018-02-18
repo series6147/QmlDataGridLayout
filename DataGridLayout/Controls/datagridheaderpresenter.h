@@ -2,11 +2,11 @@
 #define DATAGRIDHEADERPRESENTER_H
 
 #include <QObject>
-#include <QQuickItem>
+#include <QQuickPaintedItem>
 
 class DataGrid;
 class DataGridColumn;
-class DataGridHeaderPresenter : public QQuickItem
+class DataGridHeaderPresenter : public QQuickPaintedItem
 {
     Q_OBJECT
     Q_PROPERTY(DataGrid* dataGrid READ dataGrid WRITE setDataGrid NOTIFY dataGridChanged)
@@ -19,7 +19,6 @@ private:
     void createLayout();
 
 private slots:
-    void itemWidthChanged();
     void layoutChanged();
 
 public slots:
@@ -36,6 +35,10 @@ private:
     // QQmlParserStatus interface
 public:
     void componentComplete() override;
+
+    // QQuickPaintedItem interface
+public:
+    void paint(QPainter *painter) override;
 };
 
 #endif // DATAGRIDHEADERPRESENTER_H

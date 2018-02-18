@@ -13,35 +13,21 @@ DataGridItemLayout::DataGridItemLayout(QObject *parent) : QObject(parent)
 {
 }
 
-qreal DataGridItemLayout::columnOffset(int column)
+QList<DataGridColumn *> DataGridItemLayout::getAnyIntersectedColumns(int col, QSet<int> justSizeMode, QRegExp *rexp)
 {
-    qreal offset = 0;
+    QList<DataGridColumn *> res;
 
-    for (int i = 0; i < qMin(column, m_columnsSize.size()); i++)
+    for (auto column : m_dataGrid->columns())
     {
-        offset += m_columnsSize[i];
-    }
-    return offset;
-}
-
-qreal DataGridItemLayout::columnSize(int column, int columnSpan)
-{
-    qreal size = 0;
-
-    for (int i = column >= 0 ? column : 0; i < qMin(column + columnSpan, m_columnsSize.size()); i++)
-    {
-        size += m_columnsSize[i];
-    }
-    return size;
-}
-
-qreal DataGridItemLayout::getColumnSizeFromSet(DataGridColumn *column, const QList<qreal> &columnsSize)
-{
-    int res = 0;
-
-    for (auto col = column->column(); col < column->column() + column->columnSpan(); col++)
-    {
-        res += columnsSize[col];
+        if (column->column() <= col
+            && column->column() + column->columnSpan() - 1 >= col)
+        {
+            if (justSizeMode.contains(column->sizeMode())
+                && (rexp == NULL || rexp->exactMatch(column->width().toString())))
+            {
+                res.push_back(column);
+            }
+        }
     }
     return res;
 }
@@ -83,10 +69,43 @@ QList<DataGridColumn *> DataGridItemLayout::getIntersectedColumns(int col, QSet<
     return res;
 }
 
+qreal DataGridItemLayout::columnOffset(int column)
+{
+    qreal offset = 0;
+
+    for (int i = 0; i < qMin(column, m_columnsSize.size()); i++)
+    {
+        offset += m_columnsSize[i];
+    }
+    return offset;
+}
+
+qreal DataGridItemLayout::columnSize(int column, int columnSpan)
+{
+    qreal size = 0;
+
+    for (int i = column >= 0 ? column : 0; i < qMin(column + columnSpan, m_columnsSize.size()); i++)
+    {
+        size += m_columnsSize[i];
+    }
+    return size;
+}
+
+qreal DataGridItemLayout::getColumnSizeFromSet(DataGridColumn *column, const QList<qreal> &columnsSize)
+{
+    int res = 0;
+
+    for (auto col = column->column(); col < column->column() + column->columnSpan(); col++)
+    {
+        res += columnsSize[col];
+    }
+    return res;
+}
+
 void DataGridItemLayout::arrange()
 {
-    qreal layoutWidth = 0;
     int columnCount = m_columnsSize.size();
+    qreal layoutWidth = 0;
     QRegExp rxStar("^[0-9]+\\*$");
 
     // maxmin fixed columns
@@ -100,7 +119,7 @@ void DataGridItemLayout::arrange()
             switch (column->sizeMode())
             {
                 case DataGridColumn::AutoSize:
-                    max = qMax(max, qMax((qreal)column->minWidth(), column->width().toReal()) / (qreal)column->columnSpan());
+                    max = qMax(max, qMax(column->minWidth(), column->width().toReal()) / (qreal)column->columnSpan());
                     break;
                 case DataGridColumn::RemainingSize:
                     max = qMax(max, column->minWidth() / (qreal)column->columnSpan());
@@ -112,7 +131,7 @@ void DataGridItemLayout::arrange()
                     }
                     else
                     {
-                        max = qMax(max, qMax((qreal)column->minWidth(), column->width().toReal()) / (qreal)column->columnSpan());
+                        max = qMax(max, qMax(column->minWidth(), column->width().toReal()) / (qreal)column->columnSpan());
                     }
                     break;
             }
@@ -126,22 +145,18 @@ void DataGridItemLayout::arrange()
 
         for (auto column : getIntersectedColumns(col))
         {
-            int calculatedSize = getColumnSizeFromSet(column, m_columnsSize);
+            qreal calculatedSize = getColumnSizeFromSet(column, m_columnsSize);
 
             switch (column->sizeMode())
             {
                 case DataGridColumn::AutoSize:
-                case DataGridColumn::RemainingSize:
-                    if (calculatedSize > column->minWidth())
-                    {
-                        min = qMin(min, (qreal)(calculatedSize - column->minWidth()));
-                    }
+                    min = qMin(min, calculatedSize - m_columnsSize[col]);
                     break;
                 case DataGridColumn::FixedSize:
                     if (!rxStar.exactMatch(column->width().toString())
-                        && calculatedSize > qMax((qreal)column->minWidth(), column->width().toReal()))
+                        && calculatedSize > qMax(column->minWidth(), column->width().toReal()))
                     {
-                        min = qMin(min, (qreal)(calculatedSize - qMax((qreal)column->minWidth(), column->width().toReal())));
+                        min = qMin(min, (qreal)(calculatedSize - qMax(column->minWidth(), column->width().toReal())));
                     }
                     break;
             }
@@ -158,22 +173,18 @@ void DataGridItemLayout::arrange()
 
         for (auto column : getIntersectedColumns(col))
         {
-            int calculatedSize = getColumnSizeFromSet(column, m_columnsSize);
+            qreal calculatedSize = getColumnSizeFromSet(column, m_columnsSize);
 
             switch (column->sizeMode())
             {
                 case DataGridColumn::AutoSize:
-                case DataGridColumn::RemainingSize:
-                    if (calculatedSize < column->minWidth())
-                    {
-                        min = qMin(min, (qreal)(column->minWidth() - calculatedSize));
-                    }
+                    min = qMin(min, calculatedSize - m_columnsSize[col]);
                     break;
                 case DataGridColumn::FixedSize:
                     if (!rxStar.exactMatch(column->width().toString())
-                        && calculatedSize < qMax((qreal)column->minWidth(), column->width().toReal()))
+                        && calculatedSize < qMax(column->minWidth(), column->width().toReal()))
                     {
-                        min = qMin(min, (qreal)(qMax((qreal)column->minWidth(), column->width().toReal()) - calculatedSize));
+                        min = qMin(min, qMax(column->minWidth(), column->width().toReal()) - calculatedSize);
                     }
                     break;
             }
@@ -236,14 +247,14 @@ void DataGridItemLayout::arrange()
 
     for (auto col = 0; col < columnCount; col++)
     {
-        if (getIntersectedColumns(col, { DataGridColumn::AutoSize, DataGridColumn::FixedSize }).size() > 0)
+        if (getAnyIntersectedColumns(col, { DataGridColumn::AutoSize, DataGridColumn::FixedSize }).size() > 0)
         {
             availableWidth -= m_columnsSize[col];
         }
     }
     for (auto col = 0; col < columnCount; col++)
     {
-        if (getIntersectedColumns(col, { DataGridColumn::AutoSize, DataGridColumn::FixedSize }).size() == 0)
+        if (getAnyIntersectedColumns(col, { DataGridColumn::AutoSize, DataGridColumn::FixedSize }).size() == 0)
         {
             count++;
             remainSizeColumns[m_columnsSize[col]].push_back(col);
@@ -315,7 +326,7 @@ void DataGridItemLayout::resizeColumn(DataGridColumn *column, qreal size)
 
 void DataGridItemLayout::setColumnSize(DataGridColumn *column, qreal size)
 {
-    if (column->sizeMode() == DataGridColumn::AutoSize)
+    if (column->sizeMode() == DataGridColumn::AutoSize && column->width().toReal() < size)
     {
         column->setWidth(size);
 

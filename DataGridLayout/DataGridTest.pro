@@ -11,7 +11,9 @@ SOURCES += main.cpp \
     Controls/datagridrowitempresenter.cpp \
     itemsmodel.cpp \
     Controls/datagridheaderitempresenter.cpp \
-    Controls/observableobjecteventargs.cpp
+    Controls/observableobjecteventargs.cpp \
+    Controls/datagridsortfilterproxymodel.cpp \
+    Controls/filteracceptsroweventargs.cpp
 
 RESOURCES += qml.qrc
 
@@ -46,4 +48,6 @@ HEADERS += \
     Controls/datagridrowitempresenter.h \
     itemsmodel.h \
     Controls/datagridheaderitempresenter.h \
-    Controls/observableobjecteventargs.h
+    Controls/observableobjecteventargs.h \
+    Controls/datagridsortfilterproxymodel.h \
+    Controls/filteracceptsroweventargs.h

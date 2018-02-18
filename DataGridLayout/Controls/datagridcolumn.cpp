@@ -55,22 +55,17 @@ int DataGridColumn::columnSpan() const
     return m_columnSpan;
 }
 
-int DataGridColumn::maxWidth() const
-{
-    return m_maxWidth;
-}
-
-int DataGridColumn::minWidth() const
-{
-    return m_minWidth;
-}
-
 int DataGridColumn::roleIndex() const
 {
+    if (!m_role.isValid())
+    {
+        return -1;
+    }
+
     bool ok = false;
     int roleIndex = m_role.toInt(&ok);
 
-    return ok ? roleIndex : m_dataGrid->sortFilterProxyModel()->roleNames().key(m_role.toString().toLocal8Bit());
+    return ok ? roleIndex : m_dataGrid->model()->roleNames().key(m_role.toString().toLocal8Bit());
 }
 
 int DataGridColumn::row() const
@@ -91,6 +86,16 @@ QQmlComponent* DataGridColumn::headerDelegate() const
 QQmlComponent* DataGridColumn::itemDelegate() const
 {
     return m_itemDelegate;
+}
+
+qreal DataGridColumn::maxWidth() const
+{
+    return m_maxWidth;
+}
+
+qreal DataGridColumn::minWidth() const
+{
+    return m_minWidth;
 }
 
 Qt::Alignment DataGridColumn::itemAlignment() const
@@ -163,7 +168,7 @@ void DataGridColumn::setHeaderVisible(bool headerVisible)
     emit headerVisibleChanged(m_headerVisible);
 }
 
-void DataGridColumn::setMaxWidth(int maxWidth)
+void DataGridColumn::setMaxWidth(qreal maxWidth)
 {
     if (m_maxWidth == maxWidth)
         return;
@@ -172,7 +177,7 @@ void DataGridColumn::setMaxWidth(int maxWidth)
     emit maxWidthChanged(m_maxWidth);
 }
 
-void DataGridColumn::setMinWidth(int minWidth)
+void DataGridColumn::setMinWidth(qreal minWidth)
 {
     if (m_minWidth == minWidth)
         return;

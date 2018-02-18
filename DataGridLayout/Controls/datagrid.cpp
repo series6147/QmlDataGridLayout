@@ -3,15 +3,19 @@
 #include "datagridheaderpresenter.h"
 #include "datagriditemlayout.h"
 #include "datagridrowpresenter.h"
+#include "datagridsortfilterproxymodel.h"
+#include "filteracceptsroweventargs.h"
 #include "observableobjecteventargs.h"
 
 DataGrid::DataGrid(QQuickItem *parent) : QQuickItem(parent)
 {
     m_alternativeRowBackground = "#eee";
-    m_currentIndex = 0;
+    m_backgroundEnabled = true;
+    m_currentIndex = -1;
     m_layout = NULL;
     m_header = NULL;
     m_headerBackground = "#ddd";
+    m_isReadOnly = false;
     m_itemLayout = new DataGridItemLayout(this);
     m_itemHeight = 50;
     m_model = NULL;
@@ -20,11 +24,13 @@ DataGrid::DataGrid(QQuickItem *parent) : QQuickItem(parent)
     m_inactiveHighlightColor = "#e6e6e6";
     m_selectionMode = NoSelection;
     m_sortEnabled = true;
-    m_sortFilterProxyModel = new QSortFilterProxyModel(this);
+    m_sortFilterProxyModel = new DataGridSortFilterProxyModel(this, this);
+    m_updateScrollBar = false;
     m_updateTimer = new QTimer(this);
     m_updateTimer->setInterval(50);
     m_updateTimer->setSingleShot(true);
 
+    connect(m_itemLayout, &DataGridItemLayout::layoutChanged, this, &DataGrid::layoutWidthChanged);
     connect(m_sortFilterProxyModel, &QAbstractItemModel::dataChanged, this, &DataGrid::modelDataChanged);
     connect(m_sortFilterProxyModel, &QAbstractItemModel::layoutChanged, this, &DataGrid::modelLayoutChanged);
     connect(m_sortFilterProxyModel, &QAbstractItemModel::modelReset, this, &DataGrid::modelReset);
@@ -37,9 +43,27 @@ DataGrid::DataGrid(QQuickItem *parent) : QQuickItem(parent)
     setAcceptedMouseButtons(Qt::AllButtons);
 }
 
-bool DataGrid::sortEnabled() const
+bool DataGrid::backgroundEnabled() const
 {
-    return m_sortEnabled;
+    return m_backgroundEnabled;
+}
+
+bool DataGrid::filterAcceptsRowHandler(int source_row, const QModelIndex &source_parent)
+{
+    auto eventArgs = new FilterAcceptsRowEventArgs(source_row, source_parent);
+
+    emit filterAcceptsRow(eventArgs);
+
+    auto res = eventArgs->accepted();
+
+    eventArgs->deleteLater();
+
+    return res;
+}
+
+bool DataGrid::isReadOnly() const
+{
+    return m_isReadOnly;
 }
 
 bool DataGrid::isRowSelected(int row)
@@ -57,6 +81,11 @@ bool DataGrid::isRowSelected(int row)
     }
 }
 
+bool DataGrid::sortEnabled() const
+{
+    return m_sortEnabled;
+}
+
 DataGrid::SelectionMode DataGrid::selectionMode() const
 {
     return m_selectionMode;
@@ -65,6 +94,18 @@ DataGrid::SelectionMode DataGrid::selectionMode() const
 DataGridColumn *DataGrid::getColumnByIndex(int index)
 {
     return index >= 0 && index < m_columns.size() ? m_columns[index] : NULL;
+}
+
+DataGridColumn *DataGrid::getColumnByRole(QString role)
+{
+    for (auto column : m_columns)
+    {
+        if (column->role() == role)
+        {
+            return column;
+        }
+    }
+    return Q_NULLPTR;
 }
 
 DataGridItemLayout* DataGrid::itemLayout() const
@@ -138,6 +179,11 @@ int DataGrid::itemHeight() const
     return m_itemHeight;
 }
 
+int DataGrid::rowCount() const
+{
+    return m_model == Q_NULLPTR ? 0 : m_model->rowCount();
+}
+
 QAbstractItemModel* DataGrid::model() const
 {
     return m_model;
@@ -146,6 +192,16 @@ QAbstractItemModel* DataGrid::model() const
 QList<DataGridColumn *> DataGrid::columns() const
 {
     return m_columns;
+}
+
+qreal DataGrid::headerHeight() const
+{
+    return m_header == NULL ? 0 : m_header->height();
+}
+
+qreal DataGrid::layoutWidth() const
+{
+    return m_itemLayout->columnSize(0, INT_MAX);
 }
 
 QObject *DataGrid::getObservableObject(int row)
@@ -235,6 +291,24 @@ QString DataGrid::observablePropertyName() const
     return m_observablePropertyName;
 }
 
+Qt::CaseSensitivity DataGrid::filterCaseSensitivity() const
+{
+    return m_sortFilterProxyModel->filterCaseSensitivity();
+}
+
+QVariant DataGrid::getUnfilteredValue(int rowIndex, QString role)
+{
+    if (m_model
+        && rowIndex >= 0
+        && rowIndex < m_model->rowCount())
+    {
+        auto roleIndex = m_model->roleNames().key(role.toLocal8Bit());
+
+        return m_model ? m_model->data(m_model->index(rowIndex, 0), roleIndex) : QVariant();
+    }
+    return QVariant();
+}
+
 void DataGrid::alignRow(int row)
 {
     if (m_layout != NULL && m_scrollBar != NULL && row >= 0 && row < m_items.size())
@@ -249,7 +323,6 @@ void DataGrid::alignRow(int row)
         }
         else if (pos.y() + height > m_scrollBar->height())
         {
-
             m_scrollBar->setProperty("contentY", contentY + pos.y() + height - m_scrollBar->height());
         }
     }
@@ -292,7 +365,6 @@ void DataGrid::clearRows()
 
         item->setParent(NULL);
         item->deleteLater();
-        item->deleteLater();
     }
 
     m_items.clear();
@@ -321,6 +393,8 @@ void DataGrid::componentComplete()
     if (m_header != NULL)
     {
         m_header->setDataGrid(this);
+
+        connect(m_header, &DataGridHeaderPresenter::heightChanged, this, &DataGrid::headerHeightChanged);
     }
 
     m_scrollBar = qobject_cast<QQuickItem*>(findChild<QObject*>("__DATAGRIDSCROLLBAR__"));
@@ -437,7 +511,22 @@ void DataGrid::modelLayoutChanged(const QList<QPersistentModelIndex> &parents, Q
 
         updateScrollBar();
         updateVisibleRange(true);
+
+        for (auto column : m_columns)
+        {
+            if (column->sortActive() && column->sortEnabled())
+            {
+                if (m_sortFilterProxyModel->sortRole() != column->roleIndex())
+                {
+                    m_sortFilterProxyModel->setSortRole(column->roleIndex());
+                    m_sortFilterProxyModel->sort(0, Qt::AscendingOrder);
+                }
+                break;
+            }
+        }
     }
+
+    emit rowCountChanged();
 }
 
 void DataGrid::modelReset()
@@ -445,6 +534,8 @@ void DataGrid::modelReset()
     clearRows();
     updateScrollBar();
     updateVisibleRange();
+
+    emit rowCountChanged();
 }
 
 void DataGrid::modelRowsInserted(const QModelIndex &parent, int first, int last)
@@ -474,6 +565,8 @@ void DataGrid::modelRowsInserted(const QModelIndex &parent, int first, int last)
     {
         updateVisibleRange(true);
     }
+
+    emit rowCountChanged();
 }
 
 void DataGrid::modelRowsMoved(const QModelIndex &parent, int start, int end, const QModelIndex &destination, int row)
@@ -545,6 +638,8 @@ void DataGrid::modelRowsRemoved(const QModelIndex &parent, int first, int last)
     {
         updateVisibleRange(true);
     }
+
+    emit rowCountChanged();
 }
 
 void DataGrid::mousePressEvent(QMouseEvent *event)
@@ -566,6 +661,9 @@ void DataGrid::populateRows()
         }
 
         updateScrollBar();
+        updateVisibleRange();
+
+        emit headerHeightChanged();
     }
 }
 
@@ -580,8 +678,14 @@ void DataGrid::rowHeightChanged()
 
     if (source)
     {
-        m_items[source->itemRow()] = source->implicitHeight();
-        m_updateTimer->start();
+        auto itemRow = source->itemRow();
+
+        if (itemRow >= 0 && itemRow < m_items.size())
+        {
+            m_items[itemRow] = source->height();
+            m_updateScrollBar = true;
+            m_updateTimer->start();
+        }
     }
 }
 
@@ -608,6 +712,15 @@ void DataGrid::setAlternativeRowBackground(QString alternativeRowBackground)
     emit alternativeRowBackgroundChanged();
 }
 
+void DataGrid::setBackgroundEnabled(bool backgroundEnabled)
+{
+    if (m_backgroundEnabled == backgroundEnabled)
+        return;
+
+    m_backgroundEnabled = backgroundEnabled;
+    emit backgroundEnabledChanged(m_backgroundEnabled);
+}
+
 void DataGrid::setCurrentIndex(int currentIndex, bool align)
 {
     if (m_currentIndex == currentIndex)
@@ -621,6 +734,11 @@ void DataGrid::setCurrentIndex(int currentIndex, bool align)
     {
         alignRow(m_currentIndex);
     }
+}
+
+void DataGrid::setFilterCaseSensitivity(Qt::CaseSensitivity filterCaseSensitivity)
+{
+    m_sortFilterProxyModel->setFilterCaseSensitivity(filterCaseSensitivity);
 }
 
 void DataGrid::setHeaderBackground(QString headerBackground)
@@ -650,6 +768,15 @@ void DataGrid::setInactiveHighlightColor(QString inactiveHighlightColor)
     emit inactiveHighlightColorChanged();
 }
 
+void DataGrid::setIsReadOnly(bool isReadOnly)
+{
+    if (m_isReadOnly == isReadOnly)
+        return;
+
+    m_isReadOnly = isReadOnly;
+    emit isReadOnlyChanged(m_isReadOnly);
+}
+
 void DataGrid::setItemHeight(int itemHeight)
 {
     if (itemHeight < 0)
@@ -674,6 +801,7 @@ void DataGrid::setModel(QAbstractItemModel *model)
     m_model = model;
     m_sortFilterProxyModel->setSourceModel(m_model);
     emit modelChanged(m_model);
+    emit rowCountChanged();
 
     populateRows();
 }
@@ -718,6 +846,8 @@ void DataGrid::updateScrollBar()
 
         m_scrollBar->setProperty("contentHeight", height);
     }
+
+    m_updateScrollBar = false;
 }
 
 void DataGrid::updateVisibleRange(bool refreshVisible)
@@ -762,7 +892,14 @@ void DataGrid::updateVisibleRange(bool refreshVisible)
             }
             else
             {
-                item->setItemRow(i);
+                if (item->itemRow() == i)
+                {
+                    item->refresh();
+                }
+                else
+                {
+                    item->setItemRow(i);
+                }
             }
 
             item->setParentItem(m_layout);
@@ -797,7 +934,7 @@ void DataGrid::updateVisibleRange(bool refreshVisible)
         y += m_items[i];
     }
 
-    if (totalHeightChanged)
+    if (m_updateScrollBar || totalHeightChanged)
     {
         updateScrollBar();
     }

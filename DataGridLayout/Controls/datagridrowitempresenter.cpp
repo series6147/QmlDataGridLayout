@@ -1,5 +1,6 @@
 #include "datagrid.h"
 #include "datagridcolumn.h"
+#include "datagriditemlayout.h"
 #include "datagridrowitempresenter.h"
 
 DataGridRowItemPresenter::DataGridRowItemPresenter(QQuickItem *parent) : QQuickItem(parent)
@@ -46,11 +47,6 @@ int DataGridRowItemPresenter::itemRowSpan() const
     return m_itemRowSpan;
 }
 
-int DataGridRowItemPresenter::itemWidth() const
-{
-    return m_itemWidth;
-}
-
 int DataGridRowItemPresenter::itemX() const
 {
     return m_itemX;
@@ -71,6 +67,25 @@ QObject *DataGridRowItemPresenter::observableObject() const
     return m_observableObject;
 }
 
+qreal DataGridRowItemPresenter::itemWidth() const
+{
+    return m_itemWidth;
+}
+
+QVariant DataGridRowItemPresenter::getValue(int rowIndex, QString role)
+{
+    if (m_dataGrid->model()
+        && m_model
+        && rowIndex >= 0
+        && rowIndex < m_model->rowCount())
+    {
+        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toLocal8Bit());
+
+        return m_model ? m_model->data(m_model->index(rowIndex, 0), roleIndex) : QVariant();
+    }
+    return QVariant();
+}
+
 QVariant DataGridRowItemPresenter::modelData() const
 {
     if (m_column != NULL && m_model != NULL)
@@ -80,6 +95,16 @@ QVariant DataGridRowItemPresenter::modelData() const
         return m_model ? m_model->data(m_model->index(m_rowIndex, 0), roleIndex) : QVariant();
     }
     return QVariant();
+}
+
+void DataGridRowItemPresenter::contentWidthChanged(qreal width)
+{
+    if (m_dataGrid != NULL)
+    {
+        auto layout = m_dataGrid->itemLayout();
+
+        layout->setColumnSize(m_column, width);
+    }
 }
 
 void DataGridRowItemPresenter::sendEvent(QString eventName, QVariant value)
@@ -151,7 +176,7 @@ void DataGridRowItemPresenter::setItemVisible(bool itemVisible)
     emit itemVisibleChanged(m_itemVisible);
 }
 
-void DataGridRowItemPresenter::setItemWidth(int itemWidth)
+void DataGridRowItemPresenter::setItemWidth(qreal itemWidth)
 {
     if (m_itemWidth == itemWidth)
         return;
@@ -186,6 +211,8 @@ void DataGridRowItemPresenter::setModelData(QVariant modelData)
         auto roleIndex = m_column->roleIndex();
 
         m_model->setData(m_model->index(m_rowIndex, 0), modelData, roleIndex);
+
+        emit modelDataChanged();
     }
 }
 
@@ -220,4 +247,16 @@ void DataGridRowItemPresenter::setRowIndex(int rowIndex)
 
     emit isSelectedChanged();
     emit modelDataChanged();
+}
+
+void DataGridRowItemPresenter::setValue(int rowIndex, QString role, QVariant value)
+{
+    if (m_model != NULL)
+    {
+        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toLocal8Bit());
+
+        m_model->setData(m_model->index(rowIndex, 0), value, roleIndex);
+
+        emit modelDataChanged();
+    }
 }

@@ -15,6 +15,19 @@ DataGridRowPresenter::DataGridRowPresenter(QQuickItem *parent) : QQuickPaintedIt
     setFiltersChildMouseEvents(true);
 }
 
+bool DataGridRowPresenter::childMouseEventFilter(QQuickItem *item, QEvent *event)
+{
+    Q_UNUSED(item);
+
+    auto mouseEvent = dynamic_cast<QMouseEvent*>(event);
+
+    if (mouseEvent)
+    {
+        m_dataGrid->selectRow(m_itemRow, mouseEvent);
+    }
+    return false;
+}
+
 DataGrid *DataGridRowPresenter::dataGrid() const
 {
     return m_dataGrid;
@@ -64,46 +77,72 @@ void DataGridRowPresenter::createLayout()
 
     if (m_dataGrid != NULL)
     {
+        auto columns = m_dataGrid->columns();
+        QQmlComponent itemComponent(qmlEngine(this), "qrc:/DataGridRowItem.qml");
+        QSet<QString> objNames;
+
+        qSort(columns.begin(), columns.end()
+              , [](DataGridColumn* a, DataGridColumn* b)
+        {
+            if (a->rowSpan() < b->rowSpan())
+            {
+                return false;
+            }
+            else if (a->rowSpan() > b->rowSpan())
+            {
+                return true;
+            }
+            else if (a->row() < b->row())
+            {
+                return true;
+            }
+            else if (a->row() > b->row())
+            {
+                return false;
+            }
+            else
+            {
+                return a->column() < b->column();
+            }
+        });
+
+        for (auto column : columns)
+        {
+            auto objName = QString("%1x%2").arg(column->row()).arg(column->rowSpan());
+
+            if (!objNames.contains(objName))
+            {
+                auto item = qobject_cast<QQuickItem*>(itemComponent.create());
+
+                item->setObjectName(objName);
+                item->setProperty("itemRow", column->row());
+                item->setProperty("itemRowSpan", column->rowSpan());
+                item->setParent(m_itemsLayout);
+                item->setParentItem(m_itemsLayout);
+
+                objNames.insert(objName);
+            }
+        }
+
         QQmlComponent component(qmlEngine(this), "qrc:/DataGridRowItem.qml");
 
-        for (auto column : m_dataGrid->columns())
+        for (auto column : columns)
         {
             auto item = qobject_cast<DataGridRowItemPresenter*>(component.create());
-            auto root = item->findChild<QQuickItem*>("__DATAGRIDROWITEMLAYOUT__");
+            auto parent = m_itemsLayout->findChild<QQuickItem*>(QString("%1x%2").arg(column->row()).arg(column->rowSpan()));
 
             m_items[column] = item;
 
-            item->setColumn(column);
             item->setDataGrid(m_dataGrid);
-            item->setItemRow(column->row());
-            item->setItemRowSpan(column->rowSpan());
+            item->setColumn(column);
             item->setItemVisible(column->itemVisible());
-            item->setParent(m_itemsLayout);
-            item->setParentItem(m_itemsLayout);
+            item->setParent(parent);
+            item->setParentItem(parent);
             item->setRowIndex(m_itemRow);
-
-            connect(root, &QQuickItem::widthChanged, this, &DataGridRowPresenter::itemWidthChanged);
         }
     }
 
     arrange();
-}
-
-void DataGridRowPresenter::itemWidthChanged()
-{
-    auto item = qobject_cast<QQuickItem*>(sender()->parent());
-
-    if (m_dataGrid != NULL)
-    {
-        auto column = m_items.key(item);
-
-        if (column)
-        {
-            auto layout = m_dataGrid->itemLayout();
-
-            layout->setColumnSize(column, item->implicitWidth());
-        }
-    }
 }
 
 void DataGridRowPresenter::layoutChanged()
@@ -120,22 +159,9 @@ void DataGridRowPresenter::mousePressEvent(QMouseEvent *event)
     }
 }
 
-bool DataGridRowPresenter::childMouseEventFilter(QQuickItem *item, QEvent *event)
-{
-    Q_UNUSED(item);
-
-    auto mouseEvent = dynamic_cast<QMouseEvent*>(event);
-
-    if (mouseEvent)
-    {
-        m_dataGrid->selectRow(m_itemRow, mouseEvent);
-    }
-    return false;
-}
-
 void DataGridRowPresenter::paint(QPainter *painter)
 {
-    if (m_dataGrid != NULL)
+    if (m_dataGrid != NULL && m_dataGrid->backgroundEnabled())
     {
         auto interior = QRect(0, 0, width(), height());
         auto color = QColor(m_dataGrid->isRowSelected(m_itemRow)

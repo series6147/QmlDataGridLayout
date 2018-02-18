@@ -4,12 +4,14 @@ import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.3
 
 DataGrid {
+    clip: true
     id: layoutRoot
     objectName: "__DATAGRID__"
 
     DataGridHeaderPresenter {
-        implicitHeight: Math.max(childrenRect.height, dataGrid === null ? 0 : dataGrid.itemHeight)
-        implicitWidth: childrenRect.width
+        enabled: !isReadOnly
+        implicitHeight: childrenRect.height
+        implicitWidth: Math.max(Math.max(layoutRoot.width, childrenRect.width), layoutRoot.layoutWidth)
         id: header
         objectName: "__DATAGRIDHEADER__"
         x: -scrollBar.contentX
@@ -34,6 +36,7 @@ DataGrid {
         }
 
         Item {
+            enabled: !isReadOnly
             id: grid
             objectName: "__DATAGRIDLAYOUT__"
         }

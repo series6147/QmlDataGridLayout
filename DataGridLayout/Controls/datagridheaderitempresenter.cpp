@@ -3,7 +3,7 @@
 #include "datagridheaderitempresenter.h"
 #include "datagriditemlayout.h"
 
-DataGridHeaderItemPresenter::DataGridHeaderItemPresenter(QQuickItem *parent) : QQuickPaintedItem(parent)
+DataGridHeaderItemPresenter::DataGridHeaderItemPresenter(QQuickItem *parent) : QQuickItem(parent)
 {
     m_column = NULL;
     m_dataGrid = NULL;
@@ -16,7 +16,6 @@ DataGridHeaderItemPresenter::DataGridHeaderItemPresenter(QQuickItem *parent) : Q
     m_originWidth = 0;
     m_originX = 0;
     m_resizeStarted = false;
-    m_sortOrder = Qt::AscendingOrder;
 
     setFiltersChildMouseEvents(true);
 }
@@ -61,14 +60,14 @@ int DataGridHeaderItemPresenter::itemRowSpan() const
     return m_itemRowSpan;
 }
 
-int DataGridHeaderItemPresenter::itemWidth() const
-{
-    return m_itemWidth;
-}
-
 int DataGridHeaderItemPresenter::itemX() const
 {
     return m_itemX;
+}
+
+qreal DataGridHeaderItemPresenter::itemWidth() const
+{
+    return m_itemWidth;
 }
 
 QSortFilterProxyModel *DataGridHeaderItemPresenter::model() const
@@ -79,11 +78,6 @@ QSortFilterProxyModel *DataGridHeaderItemPresenter::model() const
 QString DataGridHeaderItemPresenter::color() const
 {
     return m_dataGrid == NULL ? "#ddd" : m_dataGrid->headerBackground();
-}
-
-Qt::SortOrder DataGridHeaderItemPresenter::sortOrder() const
-{
-    return m_sortOrder;
 }
 
 QVariant DataGridHeaderItemPresenter::modelData() const
@@ -104,14 +98,13 @@ void DataGridHeaderItemPresenter::componentComplete()
     m_resizeArea = findChild<QQuickItem*>("__DATAGRIDHEADERITEMRESIZEAREA__");
 }
 
-void DataGridHeaderItemPresenter::paint(QPainter *painter)
+void DataGridHeaderItemPresenter::contentWidthChanged(qreal width)
 {
     if (m_dataGrid != NULL)
     {
-        auto interior = QRect(0, 0, width(), height());
-        auto color = QColor(m_dataGrid->headerBackground());
+        auto layout = m_dataGrid->itemLayout();
 
-        painter->fillRect(interior, color);
+        layout->setColumnSize(m_column, width);
     }
 }
 
@@ -187,7 +180,7 @@ void DataGridHeaderItemPresenter::setItemVisible(bool itemVisible)
     emit itemVisibleChanged(m_itemVisible);
 }
 
-void DataGridHeaderItemPresenter::setItemWidth(int itemWidth)
+void DataGridHeaderItemPresenter::setItemWidth(qreal itemWidth)
 {
     if (m_itemWidth == itemWidth)
         return;
@@ -220,24 +213,18 @@ void DataGridHeaderItemPresenter::setModelData(QVariant modelData)
     Q_UNUSED(modelData);
 }
 
-void DataGridHeaderItemPresenter::setSortOrder(Qt::SortOrder sortOrder)
-{
-    if (m_sortOrder == sortOrder)
-        return;
-
-    m_sortOrder = sortOrder;
-    emit sortOrderChanged(m_sortOrder);
-}
-
 void DataGridHeaderItemPresenter::sortColumn()
 {
     if (m_model != NULL)
     {
+        auto sortOrder = m_model->sortRole() == m_column->roleIndex()
+                         ? (m_model->sortOrder() == Qt::AscendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder)
+                         : Qt::AscendingOrder;
+
         m_model->setSortRole(m_column->roleIndex());
-        m_model->sort(0, m_sortOrder);
+        m_model->sort(0, sortOrder);
 
         m_column->setSortActive(true);
-        m_sortOrder = m_sortOrder == Qt::AscendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder;
     }
 }
 

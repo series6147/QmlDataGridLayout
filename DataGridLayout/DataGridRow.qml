@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.3
 
 DataGridRowPresenter {
     implicitHeight: Math.max(childrenRect.height, dataGrid === null ? 0 : dataGrid.itemHeight)
-    implicitWidth: childrenRect.width
+    implicitWidth: Math.max(childrenRect.width, dataGrid === null ? 0 : dataGrid.layoutWidth)
 
     DataGridRowLayout {
         id: layout

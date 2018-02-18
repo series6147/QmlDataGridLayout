@@ -18,9 +18,10 @@ public:
     void refresh();
 
 private:
-    qreal getColumnSizeFromSet(DataGridColumn *column, const QList<qreal> &columnsSize);
+    QList<DataGridColumn*> getAnyIntersectedColumns(int col, QSet<int> justSizeMode, QRegExp *rexp = NULL);
     QList<DataGridColumn*> getIntersectedColumns(int col);
     QList<DataGridColumn*> getIntersectedColumns(int col, QSet<int> justSizeMode, QRegExp *rexp = NULL);
+    qreal getColumnSizeFromSet(DataGridColumn *column, const QList<qreal> &columnsSize);
 
 public slots:
     void arrange();

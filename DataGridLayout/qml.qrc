@@ -12,5 +12,6 @@
         <file>DataGridHeaderLayout.qml</file>
         <file>DataGridLayout.qml</file>
         <file>Images/selectArrows.svg</file>
+        <file>DataGridItem.qml</file>
     </qresource>
 </RCC>
