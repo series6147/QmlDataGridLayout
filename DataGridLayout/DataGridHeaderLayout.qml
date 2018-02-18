@@ -28,7 +28,6 @@ GridLayout {
         {
             h += rowHeights[i];
         }
-        h = 50;
         if (height !== h)
             height = h;
         if (width !== w)

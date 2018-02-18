@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.3
 
 DataGridHeaderItemPresenter {
     id: layoutRoot
-    height: visible && childrenRect.height > 0 ? childrenRect.height + 10 : 0
+    height: visible ? childrenRect.height + 10 : 0
     objectName: "__DATAGRIDHEADERITEM__"
     visible: itemVisible
     width: itemWidth
@@ -29,7 +29,7 @@ DataGridHeaderItemPresenter {
                 layoutRoot.contentWidthChanged(implicitWidth + 10 + imageSort.implicitWidth + resize.implicitWidth);
             }
             sourceComponent: column === null
-                             ? null
+                             ? defaultDelegate
                              : column.headerDelegate === null ? defaultDelegate : column.headerDelegate
         }
 
