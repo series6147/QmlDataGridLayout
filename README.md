@@ -1,6 +1,6 @@
 DataGridLayout.qml has the main control, it depends on a couple other files.
 
-<img width="642" alt="DataGridLayout" src="https://github.com/series6147/QmlDataGridLayout/blob/master/DataGridLayout/Images/2017_08_20_10_37_23_DataGridLayout.png?raw=true">
+<img width="642" alt="DataGridLayout" src="https://raw.githubusercontent.com/series6147/QmlDataGridLayout/master/DataGridLayout/Images/2017_08_20_10_37_23_DataGridLayout.png?_sm_au_=iFVPpPWHtk7T66HJ">
 
 DataGridLayout {
         anchors.fill: parent
