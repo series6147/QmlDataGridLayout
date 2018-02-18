@@ -36,7 +36,7 @@ DataGridHeaderItemPresenter {
         Image {
             anchors.right: resize.left
             id: imageSort
-            source: "qrc:/Resources/images/selectArrows.svg"
+            source: "qrc:/Images/selectArrows.svg"
             sourceSize: "14 x 14"
             visible: layoutRoot.dataGrid.sortEnabled && layoutRoot.column.sortEnabled
 
