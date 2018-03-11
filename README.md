@@ -1,7 +1,7 @@
 DataGridLayout.qml has the main control, it depends on a couple other files.
 
 <img width="642" alt="DataGridLayout" src="https://raw.githubusercontent.com/series6147/QmlDataGridLayout/master/DataGridLayout/Images/2017_08_20_10_37_23_DataGridLayout.png?_sm_au_=iFV4mkDlR5j660FQ">
-
+```
 DataGridLayout {
         anchors.fill: parent
         itemHeight: 50
@@ -50,3 +50,4 @@ DataGridLayout {
             }
         }
     }
+```
