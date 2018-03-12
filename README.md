@@ -6,6 +6,7 @@ DataGridLayout.qml has the main control, it depends on a couple other files.
 DataGridLayout {
         anchors.fill: parent
         itemHeight: 50
+        model: null /*QAbstractItemModel*/
         objectName: "datagrid"
         selectionMode: DataGrid.SingleRow
 
