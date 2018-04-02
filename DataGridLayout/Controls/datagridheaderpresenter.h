@@ -14,8 +14,6 @@ public:
     DataGridHeaderPresenter(QQuickItem *parent = NULL);
     DataGrid* dataGrid() const;
     void arrange();
-
-private:
     void createLayout();
 
 private slots:
