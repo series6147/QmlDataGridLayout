@@ -29,6 +29,8 @@ class DataGrid : public QQuickItem
     Q_PROPERTY(int itemHeight READ itemHeight WRITE setItemHeight NOTIFY itemHeightChanged)
     Q_PROPERTY(int rowCount READ rowCount NOTIFY rowCountChanged)
     Q_PROPERTY(QAbstractItemModel* model READ model WRITE setModel NOTIFY modelChanged)
+    Q_PROPERTY(QQmlComponent* defaultHeaderDelegate READ defaultHeaderDelegate WRITE setDefaultHeaderDelegate NOTIFY defaultHeaderDelegateChanged)
+    Q_PROPERTY(QQmlComponent* defaultItemDelegate READ defaultItemDelegate WRITE setDefaultItemDelegate NOTIFY defaultItemDelegateChanged)
     Q_PROPERTY(qreal headerHeight READ headerHeight NOTIFY headerHeightChanged)
     Q_PROPERTY(qreal layoutWidth READ layoutWidth NOTIFY layoutWidthChanged)
     Q_PROPERTY(QString alternativeRowBackground READ alternativeRowBackground WRITE setAlternativeRowBackground NOTIFY alternativeRowBackgroundChanged)
@@ -36,6 +38,7 @@ class DataGrid : public QQuickItem
     Q_PROPERTY(QString highlightColor READ highlightColor WRITE setHighlightColor NOTIFY highlightColorChanged)
     Q_PROPERTY(QString inactiveHighlightColor READ inactiveHighlightColor WRITE setInactiveHighlightColor NOTIFY inactiveHighlightColorChanged)
     Q_PROPERTY(QString observablePropertyName READ observablePropertyName WRITE setObservablePropertyName NOTIFY observablePropertyNameChanged)
+    Q_PROPERTY(QStringList skipRoles READ skipRoles WRITE setSkipRoles NOTIFY skipRolesChanged)
     Q_PROPERTY(Qt::CaseSensitivity filterCaseSensitivity READ filterCaseSensitivity WRITE setFilterCaseSensitivity)
     Q_PROPERTY(SelectionMode selectionMode READ selectionMode WRITE setSelectionMode NOTIFY selectionModeChanged)
 public:
@@ -61,6 +64,8 @@ public:
     int rowCount() const;
     QAbstractItemModel* model() const;
     QList<DataGridColumn*> columns() const;
+    QQmlComponent* defaultHeaderDelegate() const;
+    QQmlComponent* defaultItemDelegate() const;
     qreal headerHeight() const;
     qreal layoutWidth() const;
     QSortFilterProxyModel* sortFilterProxyModel() const;
@@ -69,6 +74,7 @@ public:
     QString highlightColor() const;
     QString inactiveHighlightColor() const;
     QString observablePropertyName() const;
+    QStringList skipRoles() const;
     Qt::CaseSensitivity filterCaseSensitivity() const;
     SelectionMode selectionMode() const;
     void selectRow(int row, QMouseEvent *event = NULL);
@@ -109,6 +115,8 @@ public slots:
     void setAutogenerateColumns(bool autogenerateColumns);
     void setBackgroundEnabled(bool backgroundEnabled);
     void setCurrentIndex(int currentIndex, bool align = true);
+    void setDefaultHeaderDelegate(QQmlComponent* defaultHeaderDelegate);
+    void setDefaultItemDelegate(QQmlComponent* defaultItemDelegate);
     void setFilterCaseSensitivity(Qt::CaseSensitivity filterCaseSensitivity);
     void setHeaderBackground(QString headerBackground);
     void setHighlightColor(QString highlightColor);
@@ -118,6 +126,7 @@ public slots:
     void setModel(QAbstractItemModel *model);
     void setObservablePropertyName(QString observablePropertyName);
     void setSelectionMode(SelectionMode selectionMode);
+    void setSkipRoles(QStringList skipRoles);
     void setSortEnabled(bool sortEnabled);
     void updateVisibleRange(bool refreshVisible = false);
 
@@ -127,6 +136,8 @@ signals:
     void backgroundEnabledChanged(bool backgroundEnabled);
     void columnsChanged(QList<DataGridColumn*> columns);
     void currentIndexChanged(int currentIndex);
+    void defaultHeaderDelegateChanged(QQmlComponent* defaultHeaderDelegate);
+    void defaultItemDelegateChanged(QQmlComponent* defaultItemDelegate);
     void filterAcceptsRow(FilterAcceptsRowEventArgs* eventArgs);
     void headerBackgroundChanged();
     void headerHeightChanged();
@@ -141,6 +152,7 @@ signals:
     void rowCountChanged();
     void selectionChanged();
     void selectionModeChanged(SelectionMode selectionMode);
+    void skipRolesChanged(QStringList skipRoles);
     void sortEnabledChanged(bool sortEnabled);
     void userEvent(QString eventName, QVariant value);
 
@@ -159,6 +171,8 @@ private:
     QList<DataGridColumn*> m_columns;
     QList<int> m_items;
     QMap<int, DataGridRowPresenter*> m_displayedItems;
+    QQmlComponent* m_defaultHeaderDelegate;
+    QQmlComponent* m_defaultItemDelegate;
     QQueue<DataGridRowPresenter*> m_itemsPool;
     QQuickItem* m_layout;
     QQuickItem* m_scrollBar;
@@ -167,6 +181,7 @@ private:
     QString m_highlightColor;
     QString m_inactiveHighlightColor;
     QString m_observablePropertyName;
+    QStringList m_skipRoles;
     QTimer* m_updateTimer;
     SelectionMode m_selectionMode;
 
