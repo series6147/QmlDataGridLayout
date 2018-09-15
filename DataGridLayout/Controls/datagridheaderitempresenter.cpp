@@ -7,6 +7,7 @@ DataGridHeaderItemPresenter::DataGridHeaderItemPresenter(QQuickItem *parent) : Q
 {
     m_column = NULL;
     m_dataGrid = NULL;
+    m_highlighted = false;
     m_itemRow = 0;
     m_itemRowSpan = 1;
     m_itemVisible = true;
@@ -33,6 +34,11 @@ bool DataGridHeaderItemPresenter::childMouseEventFilter(QQuickItem *item, QEvent
         layout->resizeColumn(m_column, m_originWidth + QCursor::pos().x() - m_originX);
     }
     return false;
+}
+
+bool DataGridHeaderItemPresenter::highlighted() const
+{
+    return m_highlighted;
 }
 
 bool DataGridHeaderItemPresenter::itemVisible() const
@@ -77,7 +83,7 @@ QSortFilterProxyModel *DataGridHeaderItemPresenter::model() const
 
 QString DataGridHeaderItemPresenter::color() const
 {
-    return m_dataGrid == NULL ? "#ddd" : m_dataGrid->headerBackground();
+    return m_dataGrid == NULL ? "#ddd" : m_highlighted ? m_dataGrid->highlightColor() : m_dataGrid->headerBackground();
 }
 
 QVariant DataGridHeaderItemPresenter::modelData() const
@@ -108,6 +114,11 @@ void DataGridHeaderItemPresenter::contentWidthChanged(qreal width)
     }
 }
 
+void DataGridHeaderItemPresenter::dataGridDestroyed()
+{
+    m_dataGrid = Q_NULLPTR;
+}
+
 void DataGridHeaderItemPresenter::releseResize()
 {
     if (m_resizeStarted)
@@ -126,6 +137,7 @@ void DataGridHeaderItemPresenter::setDataGrid(DataGrid *dataGrid)
 
     if (m_dataGrid != NULL)
     {
+        disconnect(m_dataGrid, &DataGrid::destroyed, this, &DataGridHeaderItemPresenter::dataGridDestroyed);
         disconnect(m_dataGrid, &DataGrid::modelChanged, this, &DataGridHeaderItemPresenter::modelDataChanged);
         disconnect(m_dataGrid, SIGNAL(headerBackgroundChanged()), this, SLOT(update()));
     }
@@ -138,6 +150,7 @@ void DataGridHeaderItemPresenter::setDataGrid(DataGrid *dataGrid)
     {
         setModel(m_dataGrid->sortFilterProxyModel());
 
+        connect(m_dataGrid, &DataGrid::destroyed, this, &DataGridHeaderItemPresenter::dataGridDestroyed);
         connect(m_dataGrid, &DataGrid::modelChanged, this, &DataGridHeaderItemPresenter::modelDataChanged);
         connect(m_dataGrid, SIGNAL(headerBackgroundChanged()), this, SLOT(update()));
     }
@@ -151,6 +164,16 @@ void DataGridHeaderItemPresenter::setColumn(DataGridColumn *column)
     m_column = column;
     emit columnChanged(m_column);
     emit modelDataChanged();
+}
+
+void DataGridHeaderItemPresenter::setHighlighted(bool highlighted)
+{
+    if (m_highlighted != highlighted)
+    {
+        m_highlighted = highlighted;
+
+        emit colorChanged();
+    }
 }
 
 void DataGridHeaderItemPresenter::setItemRow(int itemRow)
@@ -238,5 +261,47 @@ void DataGridHeaderItemPresenter::startResize()
 
         setCursor(Qt::SplitHCursor);
         setKeepMouseGrab(true);
+    }
+}
+
+void DataGridHeaderItemPresenter::touchMoved(qreal x, qreal y)
+{
+    if (m_dataGrid && m_dataGrid->allowHeaderMoving())
+    {
+        auto pos = mapToItem(m_dataGrid->dragLayout(), QPointF(x, y));
+
+        m_dataGrid->onDrag(pos.rx(), pos.ry());
+    }
+}
+
+void DataGridHeaderItemPresenter::touchReleased()
+{
+    if (m_dataGrid && m_dataGrid->allowHeaderMoving())
+    {
+        m_dataGrid->endDragDrop();
+    }
+
+    if (m_highlighted)
+    {
+        setHighlighted(false);
+    }
+}
+
+void DataGridHeaderItemPresenter::touchStarted(qreal x, qreal y)
+{
+    if (m_dataGrid && m_dataGrid->allowHeaderMoving())
+    {
+        setHighlighted(true);
+
+        auto grabResult = grabToImage();
+
+        connect(grabResult.data(), &QQuickItemGrabResult::ready, [=]() {
+            if (m_dataGrid)
+            {
+                auto pos = mapToItem(m_dataGrid->dragLayout(), QPointF(x, y));
+
+                m_dataGrid->beginDragDrop(this, grabResult->image(), pos.rx(), pos.ry());
+            }
+        });
     }
 }

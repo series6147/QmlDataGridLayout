@@ -6,40 +6,46 @@ DataGridRowItemPresenter {
     id: layoutRoot
     implicitHeight: childrenRect.height > 0 ? childrenRect.height + 10 : 0
     implicitWidth: itemWidth
+    Layout.alignment: Qt.AlignVCenter
     objectName: "__DATAGRIDROWITEM__"
     visible: itemVisible
     x: itemX
 
     Item {
-        anchors.left: parent.left
-        anchors.margins: childrenRect.height > 0 ? 5 : 0
-        anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.left: layoutRoot.left
+        anchors.margins: itemLoader != null && itemLoader.height > 0 ? 5 : 0
+        anchors.right: layoutRoot.right
+        anchors.top: layoutRoot.top
         clip: true
-        implicitHeight: childrenRect.height
+        id: itemRoot
+        implicitHeight: itemLoader == null ? 0 : itemLoader.height
         objectName: "__DATAGRIDROWITEMLAYOUT__"
 
         Loader {
-            anchors.centerIn: layoutRoot.column === null
+            anchors.centerIn: layoutRoot == null || layoutRoot.column == null
                               ? undefined
                               : layoutRoot.column.itemAlignment === Qt.AlignHCenter
-                                ? parent
+                                ? itemRoot
                                 : undefined
-            anchors.left: layoutRoot.column === null
+            anchors.left: layoutRoot == null || layoutRoot.column == null
                           ? undefined
                           : layoutRoot.column.itemAlignment === Qt.AlignJustify
-                            ? parent.left
+                            ? itemRoot.left
                             : undefined
-            anchors.right: layoutRoot.column === null
+            anchors.right: layoutRoot == null || layoutRoot.column == null
                            ? undefined
                            : layoutRoot.column.itemAlignment === Qt.AlignRight || layoutRoot.column.itemAlignment === Qt.AlignJustify
-                             ? parent.right
+                             ? itemRoot.right
                              : undefined
             function sendEvent(eventName, value) {
                 layoutRoot.sendEvent(eventName, value);
             }
             function setModelData(value) {
                 layoutRoot.setModelData(value);
+            }
+            id: itemLoader
+            onImplicitWidthChanged: {
+                layoutRoot.contentWidthChanged(implicitWidth + 10);
             }
             property bool isSelected: layoutRoot.isSelected
             property int rowIndex: layoutRoot.rowIndex
@@ -48,12 +54,11 @@ DataGridRowItemPresenter {
             property var item: layoutRoot
             property var model: layoutRoot.model
             property var modelData: layoutRoot.modelData
-            onImplicitWidthChanged: {
-                layoutRoot.contentWidthChanged(implicitWidth + 10);
-            }
             sourceComponent: column === null
                              ? null
-                             : column.itemDelegate === null ? defaultDelegate : column.itemDelegate
+                             : (column.itemDelegate === null
+                                ? dataGrid.defaultItemDelegate === null ? defaultDelegate : dataGrid.defaultItemDelegate
+                                : column.itemDelegate)
         }
     }
 

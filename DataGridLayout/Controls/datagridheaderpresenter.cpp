@@ -15,6 +15,21 @@ DataGrid *DataGridHeaderPresenter::dataGrid() const
     return m_dataGrid;
 }
 
+DataGridColumn *DataGridHeaderPresenter::highlightedColumn()
+{
+    for (auto it = m_items.begin(); it != m_items.end(); ++it)
+    {
+        auto column = it.key();
+        auto item = qobject_cast<DataGridHeaderItemPresenter*>(it.value());
+
+        if (item && item->highlighted())
+        {
+            return column;
+        }
+    }
+    return Q_NULLPTR;
+}
+
 void DataGridHeaderPresenter::arrange()
 {
     auto layout = m_dataGrid->itemLayout();
@@ -38,7 +53,7 @@ void DataGridHeaderPresenter::componentComplete()
 
 void DataGridHeaderPresenter::createLayout()
 {
-    for (auto item : m_items)
+    for (auto item : m_itemsLayout->childItems())
     {
         item->setParent(NULL);
         item->setParentItem(NULL);
@@ -118,6 +133,34 @@ void DataGridHeaderPresenter::createLayout()
     arrange();
 }
 
+void DataGridHeaderPresenter::highlightHeader(qreal x, qreal y)
+{
+    if (m_dataGrid)
+    {
+        auto columns = m_dataGrid->columns();
+
+        for (auto column : columns)
+        {
+            auto parent = m_itemsLayout->findChild<QQuickItem*>(QString("%1x%2").arg(column->row()).arg(column->rowSpan()));
+
+            if (parent)
+            {
+                for (auto child : parent->childItems())
+                {
+                    auto item = qobject_cast<DataGridHeaderItemPresenter*>(child);
+
+                    if (item)
+                    {
+                        auto rect = child->mapRectToItem(m_dataGrid->dragLayout(), child->boundingRect());
+
+                        item->setHighlighted(rect.contains(QPointF(x, y)));
+                    }
+                }
+            }
+        }
+    }
+}
+
 void DataGridHeaderPresenter::layoutChanged()
 {
     arrange();
@@ -127,7 +170,7 @@ void DataGridHeaderPresenter::paint(QPainter *painter)
 {
     if (m_dataGrid != NULL)
     {
-        auto interior = QRect(0, 0, width(), height());
+        auto interior = QRectF(0, 0, width(), height());
         auto color = QColor(m_dataGrid->headerBackground());
 
         painter->fillRect(interior, color);

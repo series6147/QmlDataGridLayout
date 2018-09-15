@@ -5,19 +5,34 @@ import QtQuick.Layouts 1.3
 
 DataGridHeaderItemPresenter {
     id: layoutRoot
-    height: visible ? childrenRect.height + 10 : 0
+    height: visible && itemRoot.height > 0 ? itemRoot.height + 10 : 0
     objectName: "__DATAGRIDHEADERITEM__"
     visible: itemVisible
     width: itemWidth
     x: itemX
     z: 100
 
-    Item {
-        anchors.left: parent.left
+    MouseArea {
+        anchors.fill: parent
+        onPositionChanged: {
+            layoutRoot.touchMoved(mouse.x, mouse.y);
+        }
+        onPressed: {
+            layoutRoot.touchStarted(mouse.x, mouse.y);
+        }
+        onReleased: {
+            layoutRoot.touchReleased();
+        }
+    }
+
+    Rectangle {
+        anchors.left: layoutRoot.left
         anchors.margins: 5
-        anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.right: layoutRoot.right
+        anchors.top: layoutRoot.top
         clip: true
+        color: layoutRoot.color
+        id: itemRoot
         implicitHeight: childrenRect.height
 
         Loader {
@@ -28,17 +43,20 @@ DataGridHeaderItemPresenter {
             onImplicitWidthChanged: {
                 layoutRoot.contentWidthChanged(implicitWidth + 10 + imageSort.implicitWidth + resize.implicitWidth);
             }
-            sourceComponent: column === null
+            sourceComponent: column == null
                              ? defaultDelegate
-                             : column.headerDelegate === null ? defaultDelegate : column.headerDelegate
+                             : (column.headerDelegate == null
+                                ? dataGrid.defaultHeaderDelegate == null ? defaultDelegate : dataGrid.defaultHeaderDelegate
+                                : column.headerDelegate)
         }
 
+        //TODO: FS Use TouchIcon!!!!
         Image {
             anchors.right: resize.left
             id: imageSort
             source: "qrc:/Images/selectArrows.svg"
+            visible: layoutRoot != null && layoutRoot.column != null && layoutRoot.dataGrid != null && layoutRoot.dataGrid.sortEnabled && layoutRoot.column.sortEnabled
             sourceSize: "14 x 14"
-            visible: layoutRoot.dataGrid.sortEnabled && layoutRoot.column.sortEnabled
 
             MouseArea {
                 anchors.fill: parent
@@ -52,29 +70,29 @@ DataGridHeaderItemPresenter {
 
         ColorOverlay {
             anchors.fill: imageSort.visible ? imageSort : null
-            color: layoutRoot.column.sortActive ? "#ff999999" : "#ffdddddd"
+            color: layoutRoot != null && layoutRoot.column != null && layoutRoot.column.sortActive ? "#ff999999" : "#ffdddddd"
             source: imageSort
         }
 
         Rectangle {
-            anchors.bottom: parent.bottom
-            anchors.right: parent.right
-            anchors.top: parent.top
+            anchors.bottom: itemRoot.bottom
+            anchors.right: itemRoot.right
+            anchors.top: itemRoot.top
             color: layoutRoot.color
             id: resize
             implicitWidth: visible ? 10 : 0
-            visible: column.sizeMode === DataGridColumn.FixedSize && typeof column.width === "number"
+            visible: column != null && column.sizeMode === DataGridColumn.FixedSize && typeof column.width === "number"
 
             Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.right: parent.right
-                anchors.top: parent.top
+                anchors.bottom: resize.bottom
+                anchors.right: resize.right
+                anchors.top: resize.top
                 color: "#ccc"
                 width: 1
             }
 
             MouseArea {
-                anchors.fill: parent
+                anchors.fill: resize
                 cursorShape: Qt.SplitHCursor
                 objectName: "__DATAGRIDHEADERITEMRESIZEAREA__"
                 onPressed: {

@@ -79,7 +79,7 @@ QVariant DataGridRowItemPresenter::getValue(int rowIndex, QString role)
         && rowIndex >= 0
         && rowIndex < m_model->rowCount())
     {
-        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toLocal8Bit());
+        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toUtf8());
 
         return m_model ? m_model->data(m_model->index(rowIndex, 0), roleIndex) : QVariant();
     }
@@ -107,6 +107,11 @@ void DataGridRowItemPresenter::contentWidthChanged(qreal width)
     }
 }
 
+void DataGridRowItemPresenter::dataGridDestroyed()
+{
+    m_dataGrid = Q_NULLPTR;
+}
+
 void DataGridRowItemPresenter::sendEvent(QString eventName, QVariant value)
 {
     if (m_dataGrid != NULL)
@@ -132,6 +137,7 @@ void DataGridRowItemPresenter::setDataGrid(DataGrid *dataGrid)
 
     if (m_dataGrid != NULL)
     {
+        disconnect(m_dataGrid, &DataGrid::destroyed, this, &DataGridRowItemPresenter::dataGridDestroyed);
         disconnect(m_dataGrid, &DataGrid::selectionChanged, this, &DataGridRowItemPresenter::isSelectedChanged);
     }
 
@@ -142,6 +148,7 @@ void DataGridRowItemPresenter::setDataGrid(DataGrid *dataGrid)
     {
         setModel(m_dataGrid->sortFilterProxyModel());
 
+        connect(m_dataGrid, &DataGrid::destroyed, this, &DataGridRowItemPresenter::dataGridDestroyed);
         connect(m_dataGrid, &DataGrid::selectionChanged, this, &DataGridRowItemPresenter::isSelectedChanged);
     }
 
@@ -253,7 +260,7 @@ void DataGridRowItemPresenter::setValue(int rowIndex, QString role, QVariant val
 {
     if (m_model != NULL)
     {
-        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toLocal8Bit());
+        auto roleIndex = m_dataGrid->model()->roleNames().key(role.toUtf8());
 
         m_model->setData(m_model->index(rowIndex, 0), value, roleIndex);
 

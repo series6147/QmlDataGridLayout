@@ -13,6 +13,7 @@ class DataGridHeaderPresenter : public QQuickPaintedItem
 public:
     DataGridHeaderPresenter(QQuickItem *parent = NULL);
     DataGrid* dataGrid() const;
+    DataGridColumn* highlightedColumn();
     void arrange();
     void createLayout();
 
@@ -20,6 +21,7 @@ private slots:
     void layoutChanged();
 
 public slots:
+    void highlightHeader(qreal x, qreal y);
     void setDataGrid(DataGrid* dataGrid);
 
 signals:

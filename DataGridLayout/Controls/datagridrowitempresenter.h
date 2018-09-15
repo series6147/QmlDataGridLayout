@@ -37,6 +37,9 @@ public:
     qreal itemWidth() const;
     QVariant modelData() const;
 
+private slots:
+    void dataGridDestroyed();
+
 public slots:
     QVariant getValue(int rowIndex, QString role);
     void contentWidthChanged(qreal width);

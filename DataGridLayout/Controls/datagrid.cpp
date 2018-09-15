@@ -1,5 +1,7 @@
 #include "datagrid.h"
 #include "datagridcolumn.h"
+#include "datagriddragitempresenter.h"
+#include "datagridheaderitempresenter.h"
 #include "datagridheaderpresenter.h"
 #include "datagriditemlayout.h"
 #include "datagridrowpresenter.h"
@@ -9,23 +11,27 @@
 
 DataGrid::DataGrid(QQuickItem *parent) : QQuickItem(parent)
 {
+    m_allowHeaderMoving = false;
     m_alternativeRowBackground = "#eee";
     m_autogenerateColumns = false;
     m_backgroundEnabled = true;
     m_currentIndex = -1;
     m_defaultHeaderDelegate = NULL;
     m_defaultItemDelegate = NULL;
+    m_dragLayout = NULL;
+    m_dragDropStarted = false;
     m_header = NULL;
     m_headerBackground = "#ddd";
     m_highlightColor = "steelblue";
     m_inactiveHighlightColor = "#e6e6e6";
     m_isReadOnly = false;
     m_itemHeight = 50;
-    m_itemLayout = new DataGridItemLayout(this);
+    m_itemLayout = new DataGridItemLayout(this, this);
     m_layout = NULL;
     m_model = NULL;
     m_scrollBar = NULL;
     m_selectionMode = NoSelection;
+    m_showBorder = false;
     m_sortEnabled = true;
     m_sortFilterProxyModel = new DataGridSortFilterProxyModel(this, this);
     m_updateScrollBar = false;
@@ -52,6 +58,11 @@ DataGrid::DataGrid(QQuickItem *parent) : QQuickItem(parent)
     setAcceptedMouseButtons(Qt::AllButtons);
 }
 
+bool DataGrid::allowHeaderMoving() const
+{
+    return m_allowHeaderMoving;
+}
+
 bool DataGrid::autogenerateColumns() const
 {
     return m_autogenerateColumns;
@@ -60,6 +71,11 @@ bool DataGrid::autogenerateColumns() const
 bool DataGrid::backgroundEnabled() const
 {
     return m_backgroundEnabled;
+}
+
+bool DataGrid::dragDropStarted()
+{
+    return m_dragDropStarted;
 }
 
 bool DataGrid::filterAcceptsRowHandler(int source_row, const QModelIndex &source_parent)
@@ -78,6 +94,11 @@ bool DataGrid::filterAcceptsRowHandler(int source_row, const QModelIndex &source
 bool DataGrid::isReadOnly() const
 {
     return m_isReadOnly;
+}
+
+bool DataGrid::showBorder() const
+{
+    return m_showBorder;
 }
 
 bool DataGrid::isRowSelected(int row)
@@ -218,6 +239,11 @@ QQmlComponent *DataGrid::defaultItemDelegate() const
     return m_defaultItemDelegate;
 }
 
+QQuickItem *DataGrid::dragLayout()
+{
+    return m_dragLayout;
+}
+
 qreal DataGrid::headerHeight() const
 {
     return m_header == NULL ? 0 : m_header->height();
@@ -300,6 +326,11 @@ QString DataGrid::alternativeRowBackground() const
     return m_alternativeRowBackground;
 }
 
+QString DataGrid::borderColor() const
+{
+    return m_borderColor;
+}
+
 QString DataGrid::headerBackground() const
 {
     return m_headerBackground;
@@ -338,7 +369,20 @@ QVariant DataGrid::getUnfilteredValue(int rowIndex, QString role)
     {
         auto roleIndex = m_model->roleNames().key(role.toLocal8Bit());
 
-        return m_model ? m_model->data(m_model->index(rowIndex, 0), roleIndex) : QVariant();
+        return m_model->data(m_model->index(rowIndex, 0), roleIndex);
+    }
+    return QVariant();
+}
+
+QVariant DataGrid::getValue(int rowIndex, QString role)
+{
+    if (m_model
+        && rowIndex >= 0
+        && rowIndex < m_model->rowCount())
+    {
+        auto roleIndex = m_model->roleNames().key(role.toLocal8Bit());
+
+        return m_sortFilterProxyModel->data(m_sortFilterProxyModel->index(rowIndex, 0), roleIndex);
     }
     return QVariant();
 }
@@ -388,6 +432,30 @@ void DataGrid::alignRowToTop(int row)
         auto pos = m_scrollBar->mapFromItem(m_layout, QPointF(0, getRowOffset(row)));
 
         m_scrollBar->setProperty("contentY", contentY + pos.y());
+    }
+}
+
+void DataGrid::beginDragDrop(DataGridHeaderItemPresenter *header, const QImage &image, qreal x, qreal y)
+{
+    if (m_allowHeaderMoving)
+    {
+        m_dragDropStarted = true;
+        m_origDrag.setX(x);
+        m_origDrag.setY(y);
+
+        QQmlComponent component(qmlEngine(this), "qrc:/DataGridDragItem.qml");
+        auto item = qobject_cast<DataGridDragItemPresenter*>(component.create());
+        auto rect = header->mapRectFromItem(m_dragLayout, header->boundingRect());
+
+        item->setProperty("image", image);
+        item->setProperty("origX", -rect.x());
+        item->setProperty("origY", -rect.y());
+        item->setProperty("x", -rect.x());
+        item->setProperty("y", -rect.y());
+        item->setParent(m_dragLayout);
+        item->setParentItem(m_dragLayout);
+
+        m_draggedHeaders.insert(header, item);
     }
 }
 
@@ -464,6 +532,7 @@ void DataGrid::componentComplete()
         }
     }
 
+    m_dragLayout = qobject_cast<QQuickItem*>(findChild<QObject*>("__DATAGRIDDRAGLAYOUT__"));
     m_layout = qobject_cast<QQuickItem*>(findChild<QObject*>("__DATAGRIDLAYOUT__"));
 
     m_header = qobject_cast<DataGridHeaderPresenter*>(findChild<QObject*>("__DATAGRIDHEADER__"));
@@ -493,12 +562,87 @@ void DataGrid::decrementCurrentIndex()
     }
 }
 
+void DataGrid::endDragDrop()
+{
+    if (m_dragDropStarted)
+    {
+        for (auto i = m_dragLayout->children().size() - 1; i >= 0; i--)
+        {
+            auto item = qobject_cast<QQuickItem*>(m_dragLayout->children().at(i));
+
+            item->setParent(NULL);
+            item->setParentItem(NULL);
+            item->deleteLater();
+        }
+
+        auto target = m_header->highlightedColumn();
+
+        if (target)
+        {
+            auto col = target->column();
+            auto row = target->row();
+            QSet<DataGridColumn*> draggedColumns;
+
+            for (auto it = m_draggedHeaders.begin(); it != m_draggedHeaders.end(); ++it)
+            {
+                auto column = it.key()->column();
+
+                draggedColumns.insert(column);
+            }
+
+            for (auto draggedColumn : draggedColumns)
+            {
+                for (auto column : m_columns)
+                {
+                    if (!draggedColumns.contains(column)
+                        && column->column() > draggedColumn->column()
+                        && column->row() == draggedColumn->row())
+                    {
+                        column->setColumn(column->column() - 1);
+                    }
+                }
+            }
+
+            for (auto draggedColumn : draggedColumns)
+            {
+                draggedColumn->setColumn(col++);
+                draggedColumn->setRow(row);
+
+                for (auto column : m_columns)
+                {
+                    if (!draggedColumns.contains(column)
+                        && column->column() >= draggedColumn->column()
+                        && column->row() == draggedColumn->row())
+                    {
+                        column->setColumn(column->column() + 1);
+                    }
+                }
+            }
+
+            m_header->createLayout();
+
+            clearRows();
+            populateRows();
+            updateScrollBar();
+            updateVisibleRange();
+        }
+
+        m_dragDropStarted = false;
+        m_draggedHeaders.clear();
+    }
+}
+
 void DataGrid::incrementCurrentIndex()
 {
     if (m_currentIndex < m_items.size() - 1)
     {
         setCurrentIndex(m_currentIndex + 1);
     }
+}
+
+void DataGrid::invalidate()
+{
+    m_sortFilterProxyModel->invalidate();
 }
 
 void DataGrid::keyPressEvent(QKeyEvent *event)
@@ -733,6 +877,35 @@ void DataGrid::mousePressEvent(QMouseEvent *event)
     setFocus(true);
 }
 
+void DataGrid::onDrag(qreal x, qreal y)
+{
+    if (m_dragDropStarted)
+    {
+        auto dx = x - m_origDrag.x();
+        auto dy = y - m_origDrag.y();
+
+        for (auto it = m_draggedHeaders.begin(); it != m_draggedHeaders.end(); ++it)
+        {
+            it.value()->setX(it.value()->origX() + dx);
+            it.value()->setY(it.value()->origY() + dy);
+        }
+
+        if (x < 50)
+        {
+            emit scrollIncrementally(200, .001);
+        }
+        else if (x > width() - 50)
+        {
+            emit scrollIncrementally(-200, .001);
+        }
+    }
+
+    if (m_header)
+    {
+        m_header->highlightHeader(x, y);
+    }
+}
+
 void DataGrid::populateAutogeneratedColumns()
 {
     if (m_autogenerateColumns && m_model)
@@ -868,6 +1041,15 @@ void DataGrid::selectRow(int row, QMouseEvent *event)
     }
 }
 
+void DataGrid::setAllowHeaderMoving(bool moveHeaders)
+{
+    if (m_allowHeaderMoving == moveHeaders)
+        return;
+
+    m_allowHeaderMoving = moveHeaders;
+    emit allowHeaderMovingChanged(m_allowHeaderMoving);
+}
+
 void DataGrid::setAlternativeRowBackground(QString alternativeRowBackground)
 {
     if (m_alternativeRowBackground == alternativeRowBackground)
@@ -902,6 +1084,15 @@ void DataGrid::setBackgroundEnabled(bool backgroundEnabled)
 
     m_backgroundEnabled = backgroundEnabled;
     emit backgroundEnabledChanged(m_backgroundEnabled);
+}
+
+void DataGrid::setBorderColor(QString borderColor)
+{
+    if (m_borderColor == borderColor)
+        return;
+
+    m_borderColor = borderColor;
+    emit borderColorChanged(m_borderColor);
 }
 
 void DataGrid::setCurrentIndex(int currentIndex, bool align)
@@ -1033,6 +1224,15 @@ void DataGrid::setSelectionMode(DataGrid::SelectionMode selectionMode)
 
     m_selectionMode = selectionMode;
     emit selectionModeChanged(m_selectionMode);
+}
+
+void DataGrid::setShowBorder(bool showBorder)
+{
+    if (m_showBorder == showBorder)
+        return;
+
+    m_showBorder = showBorder;
+    emit showBorderChanged(m_showBorder);
 }
 
 void DataGrid::setSkipRoles(QStringList skipRoles)

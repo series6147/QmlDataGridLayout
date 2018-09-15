@@ -6,6 +6,7 @@
 
 #include <Controls/datagrid.h>
 #include <Controls/datagridcolumn.h>
+#include <Controls/datagriddragitempresenter.h>
 #include <Controls/datagridheaderitempresenter.h>
 #include <Controls/datagridheaderpresenter.h>
 #include <Controls/datagriditemlayout.h>
@@ -20,6 +21,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<DataGrid>("com.mapal.unibase", 1, 0, "DataGrid");
     qmlRegisterType<DataGridColumn>("com.mapal.unibase", 1, 0, "DataGridColumn");
+    qmlRegisterType<DataGridDragItemPresenter>("com.mapal.unibase", 1, 0, "DataGridDragItemPresenter");
     qmlRegisterType<DataGridHeaderItemPresenter>("com.mapal.unibase", 1, 0, "DataGridHeaderItemPresenter");
     qmlRegisterType<DataGridHeaderPresenter>("com.mapal.unibase", 1, 0, "DataGridHeaderPresenter");
     qmlRegisterType<DataGridItemLayout>("com.mapal.unibase", 1, 0, "DataGridItemLayout");

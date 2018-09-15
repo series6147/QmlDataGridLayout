@@ -7,29 +7,39 @@ DataGrid {
     clip: true
     id: layoutRoot
     objectName: "__DATAGRID__"
+    onScrollIncrementally: {
+        flickable.flick(xVelocity, yVelocity);
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        border.color: borderColor
+        border.width: 1
+        visible: showBorder
+    }
 
     DataGridHeaderPresenter {
         enabled: !isReadOnly
-        implicitHeight: childrenRect.height
+        implicitHeight: headerLayout.height
         implicitWidth: Math.max(Math.max(layoutRoot.width, childrenRect.width), layoutRoot.layoutWidth)
         id: header
         objectName: "__DATAGRIDHEADER__"
-        x: -scrollBar.contentX
+        x: -flickable.contentX
 
         DataGridHeaderLayout {
-            id: layout
+            id: headerLayout
             objectName: "__DATAGRIDHEADERROWLAYOUT__"
         }
     }
 
-    ScrollBarPage {
+    Flickable {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
         clip: true
         contentWidth: grid.childrenRect.width
-        id: scrollBar
+        id: flickable
         objectName: "__DATAGRIDSCROLLBAR__"
         onContentYChanged: {
             layoutRoot.updateVisibleRange();
@@ -40,5 +50,19 @@ DataGrid {
             id: grid
             objectName: "__DATAGRIDLAYOUT__"
         }
+    }
+
+    Item {
+        anchors.fill: parent
+        objectName: "__DATAGRIDDRAGLAYOUT__"
+        opacity: .5
+    }
+
+    FlickableTint {
+        flickable: flickable
+    }
+
+    ScrollBars {
+        flickable: flickable
     }
 }

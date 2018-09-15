@@ -13,5 +13,8 @@
         <file>DataGridLayout.qml</file>
         <file>Images/selectArrows.svg</file>
         <file>DataGridItem.qml</file>
+        <file>FlickableTint.qml</file>
+        <file>ScrollBars.qml</file>
+        <file>DataGridDragItem.qml</file>
     </qresource>
 </RCC>

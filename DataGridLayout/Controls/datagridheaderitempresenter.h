@@ -4,6 +4,7 @@
 #include <QAbstractItemModel>
 #include <QObject>
 #include <QPainter>
+#include <QQuickItemGrabResult>
 #include <QQuickPaintedItem>
 #include <QSortFilterProxyModel>
 
@@ -12,6 +13,7 @@ class DataGridColumn;
 class DataGridHeaderItemPresenter : public QQuickItem
 {
     Q_OBJECT
+    Q_PROPERTY(bool highlighted READ highlighted WRITE setHighlighted)
     Q_PROPERTY(bool itemVisible READ itemVisible WRITE setItemVisible NOTIFY itemVisibleChanged)
     Q_PROPERTY(DataGrid* dataGrid READ dataGrid WRITE setDataGrid NOTIFY dataGridChanged)
     Q_PROPERTY(DataGridColumn* column READ column WRITE setColumn NOTIFY columnChanged)
@@ -24,6 +26,7 @@ class DataGridHeaderItemPresenter : public QQuickItem
     Q_PROPERTY(QVariant modelData READ modelData WRITE setModelData NOTIFY modelDataChanged)
 public:
     DataGridHeaderItemPresenter(QQuickItem *parent = Q_NULLPTR);
+    bool highlighted() const;
     bool itemVisible() const;
     DataGrid* dataGrid() const;
     DataGridColumn* column() const;
@@ -34,6 +37,9 @@ public:
     QSortFilterProxyModel* model() const;
     QString color() const;
     QVariant modelData() const;
+
+private slots:
+    void dataGridDestroyed();
 
 signals:
     void colorChanged();
@@ -52,6 +58,7 @@ public slots:
     void releseResize();
     void setColumn(DataGridColumn* column);
     void setDataGrid(DataGrid* dataGrid);
+    void setHighlighted(bool highlighted);
     void setItemRow(int itemRow);
     void setItemRowSpan(int itemRowSpan);
     void setItemVisible(bool itemVisible);
@@ -61,8 +68,12 @@ public slots:
     void setModelData(QVariant modelData);
     void sortColumn();
     void startResize();
+    void touchMoved(qreal x, qreal y);
+    void touchReleased();
+    void touchStarted(qreal x, qreal y);
 
 private:
+    bool m_highlighted;
     bool m_itemVisible;
     bool m_resizeStarted;
     DataGrid* m_dataGrid;
